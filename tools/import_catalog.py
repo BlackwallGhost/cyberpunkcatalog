@@ -86,6 +86,20 @@ def main():
         if url == BASE + "/cards":
             clues = sorted(set(re.findall(r'.{0,100}(?:pagination|pageSize|totalPages|api/|/api|cursor|offset).{0,180}', response.text, re.IGNORECASE)))
             print("PAGING CLUES:", repr(clues[:30]), file=sys.stderr, flush=True)
+            script_clues = []
+            page_soup = BeautifulSoup(response.text, "html.parser")
+            for script in page_soup.select("script[src]"):
+                script_url = urljoin(BASE, script.get("src"))
+                script_response = session.get(script_url, timeout=30)
+                if script_response.status_code != 200:
+                    continue
+                for match in re.finditer(r"(?:offset|pageSize|/api/|netdeck)", script_response.text, re.IGNORECASE):
+                    script_clues.append(script_response.text[max(0, match.start() - 250):match.start() + 500])
+                    if len(script_clues) >= 20:
+                        break
+                if len(script_clues) >= 20:
+                    break
+            print("SCRIPT CLUES:", repr(script_clues), file=sys.stderr, flush=True)
         soup = BeautifulSoup(response.text, "html.parser")
         for anchor in soup.select('a[href^="/cards/"]'):
             href = anchor.get("href", "")
