@@ -96,6 +96,10 @@ def main():
         ):
             printing_ids.update(re.findall(pattern, response.text, re.IGNORECASE))
 
+        if not printing_ids and not records:
+            marker = response.text.lower().find("printing")
+            print("DEBUG printing HTML:", repr(response.text[max(0, marker - 300):marker + 700]))
+
         for printing_id in sorted(printing_ids):
             printing_url = card_url + "?printing=" + printing_id
             record = parse_printing(session, printing_url, slug, printing_id)
