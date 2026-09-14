@@ -47,6 +47,9 @@ def parse_printing(session, url, slug, printing_id):
     card_type = type_match.group(1) if type_match else ""
     number_match = re.search(r"NUMBER:\\s*([^\\s]+)", body, re.IGNORECASE)
     if not number_match:
+        if not getattr(parse_printing, "_number_debugged", False):
+            print("DEBUG number body:", repr(body[:2500]), file=sys.stderr, flush=True)
+            parse_printing._number_debugged = True
         return None
     stable_number = number_match.group(1).strip()
     stable_id = slug + "-" + unquote(printing_id).lower()
