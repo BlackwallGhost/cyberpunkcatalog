@@ -7,6 +7,7 @@ alternate-art versions remain distinct collection entries.
 """
 import json
 import re
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse, unquote
 
@@ -99,7 +100,7 @@ def main():
 
         if not printing_ids and not debugged_markup:
             marker = response.text.lower().find("printing")
-            print("DEBUG printing HTML:", repr(response.text[max(0, marker - 300):marker + 1500]))
+            print("DEBUG printing HTML:", repr(response.text[max(0, marker - 300):marker + 1500]), file=sys.stderr, flush=True)
             debugged_markup = True
 
         for printing_id in sorted(printing_ids):
