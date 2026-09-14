@@ -21,6 +21,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
+      - name: Install catalog importer dependencies
+        run: python3 -m pip install requests beautifulsoup4
+      - name: Refresh official card catalog
+        run: python3 tools/import_catalog.py
       - name: Build debug APK
         run: gradle assembleDebug
       - name: Upload APK
