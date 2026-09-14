@@ -100,8 +100,8 @@ def main():
         for printing_id in sorted(printing_ids):
             printing_url = card_url + "?printing=" + printing_id
             record = parse_printing(session, printing_url, slug, printing_id)
-                if record:
-                    records.append(record)
+            if record:
+                records.append(record)
 
     unique = {record["id"]: record for record in records}
     if len(card_urls) < 100 or len(unique) < 100:
