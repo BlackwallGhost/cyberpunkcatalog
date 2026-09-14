@@ -1,0 +1,14 @@
+[
+  {"id":"wtnc-beta-168","name":"Johnny Silverhand","subtitle":"Rocking Renegade","setName":"Welcome to Night City — Beta","collectorNumber":"β168","rarity":"Secret","type":"Legend"},
+  {"id":"wtnc-retail-003","name":"Johnny Silverhand","subtitle":"Rocking Renegade","setName":"Welcome to Night City — Retail","collectorNumber":"003","rarity":"Secret","type":"Legend"},
+  {"id":"wtnc-beta-167","name":"Towerfall","subtitle":"","setName":"Welcome to Night City — Beta","collectorNumber":"β167","rarity":"Epic","type":"Program"},
+  {"id":"wtnc-retail-138","name":"Towerfall","subtitle":"","setName":"Welcome to Night City — Retail","collectorNumber":"138","rarity":"Epic","type":"Program"},
+  {"id":"wtnc-beta-025","name":"Mantis Blades","subtitle":"","setName":"Welcome to Night City — Beta","collectorNumber":"β025","rarity":"Common","type":"Gear"},
+  {"id":"wtnc-retail-025","name":"Mantis Blades","subtitle":"","setName":"Welcome to Night City — Retail","collectorNumber":"025","rarity":"Common","type":"Gear"},
+  {"id":"wtnc-beta-026","name":"Satori","subtitle":"Sword of Saburo","setName":"Welcome to Night City — Beta","collectorNumber":"β026","rarity":"Uncommon","type":"Gear"},
+  {"id":"wtnc-retail-026","name":"Satori","subtitle":"Sword of Saburo","setName":"Welcome to Night City — Retail","collectorNumber":"026","rarity":"Uncommon","type":"Gear"},
+  {"id":"wtnc-retail-001","name":"Adam Smasher","subtitle":"Ender of Legends","setName":"Welcome to Night City — Retail","collectorNumber":"001","rarity":"Epic","type":"Legend"},
+  {"id":"wtnc-retail-046","name":"Hanako Arasaka","subtitle":"In a Gilded Cage","setName":"Welcome to Night City — Retail","collectorNumber":"046","rarity":"Rare","type":"Unit"},
+  {"id":"wtnc-retail-123","name":"Placide","subtitle":"Voodoo Sentinel","setName":"Welcome to Night City — Retail","collectorNumber":"123","rarity":"Rare","type":"Unit"},
+  {"id":"wtnc-retail-128","name":"Dying Night","subtitle":"V's Pistol","setName":"Welcome to Night City — Retail","collectorNumber":"128","rarity":"Rare","type":"Gear"}
+]
