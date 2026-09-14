@@ -2,6 +2,7 @@ package com.blackwallghost.cyberpunkcatalog
 
 import android.content.Context
 import android.os.Bundle
+import org.json.JSONArray
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -70,17 +71,34 @@ class CollectionStore(context: Context) {
     }
 }
 
+private fun loadCatalog(context: Context): List<CardPrinting> = runCatching {
+    val json = context.assets.open("catalog.json").bufferedReader().use { it.readText() }
+    val array = JSONArray(json)
+    List(array.length()) { index ->
+        val item = array.getJSONObject(index)
+        CardPrinting(
+            id = item.getString("id"),
+            name = item.getString("name"),
+            subtitle = item.optString("subtitle"),
+            setName = item.getString("setName"),
+            collectorNumber = item.getString("collectorNumber"),
+            rarity = item.getString("rarity"),
+            type = item.getString("type")
+        )
+    }
+}.getOrElse { officialSeedCatalog }
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val store = CollectionStore(this)
-        setContent { CyberpunkCatalogApp(store) }
+        setContent { CyberpunkCatalogApp(store, loadCatalog(this)) }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CyberpunkCatalogApp(store: CollectionStore) {
+fun CyberpunkCatalogApp(store: CollectionStore, catalog: List<CardPrinting>) {
     var query by remember { mutableStateOf("") }
     var rarity by remember { mutableStateOf("All") }
     var ownedOnly by remember { mutableStateOf(false) }
@@ -88,7 +106,7 @@ fun CyberpunkCatalogApp(store: CollectionStore) {
 
     val rarities = listOf("All", "Common", "Uncommon", "Rare", "Epic", "Secret")
     val cards = remember(query, rarity, ownedOnly, refreshKey) {
-        officialSeedCatalog.filter { card ->
+        catalog.filter { card ->
             val searchable = listOf(
                 card.name, card.subtitle, card.collectorNumber,
                 card.setName, card.rarity, card.type
