@@ -7,6 +7,7 @@ alternate-art versions remain distinct collection entries.
 """
 import json
 import re
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse, unquote
 
@@ -71,7 +72,12 @@ def main():
         )
         response.raise_for_status()
         payload = response.json()
-        for card in payload.get("cards", []):
+        if offset == 0:
+            print("API SAMPLE:", repr(payload)[:5000], file=sys.stderr, flush=True)
+        api_cards = payload.get("cards") or payload.get("data") or payload.get("results") or []
+        if isinstance(api_cards, dict):
+            api_cards = api_cards.get("cards") or api_cards.get("items") or []
+        for card in api_cards:
             slug = card.get("slug")
             if slug:
                 card_urls.add(f"{BASE}/cards/{slug}")
