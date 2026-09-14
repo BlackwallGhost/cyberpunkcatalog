@@ -7,7 +7,6 @@ alternate-art versions remain distinct collection entries.
 """
 import json
 import re
-import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse, unquote
 
@@ -24,6 +23,7 @@ def normalized_text(soup):
 def parse_printing(session, url, slug, printing_id):
     response = session.get(url, timeout=30)
     response.raise_for_status()
+    response.encoding = "utf-8"
     soup = BeautifulSoup(response.text, "html.parser")
     body = normalized_text(soup)
     title = soup.title.get_text(" ", strip=True) if soup.title else slug
@@ -33,23 +33,17 @@ def parse_printing(session, url, slug, printing_id):
     else:
         name, subtitle = title.strip(), ""
 
-    set_match = re.search(r"Set:\s*(.*?)\s+\([^)]*\)\s+Rarity:\s*(.*?)\s+Illustrated by:", body, re.IGNORECASE)
+    set_match = re.search(
+        r"SET:\s*(.*?)\s+RARITY:\s*(.*?)\s+NUMBER:", body, re.IGNORECASE
+    )
     if not set_match:
-        set_match = re.search(r"Set:\s*(.*?)\s+Rarity:\s*(.*?)\s+Illustrated by:", body, re.IGNORECASE)
-    if not set_match:
-        if not getattr(parse_printing, "_debugged", False):
-            print("DEBUG detail body:", repr(body[:2500]), file=sys.stderr, flush=True)
-            parse_printing._debugged = True
         return None
 
     set_name, rarity = [part.strip() for part in set_match.groups()]
-    type_match = re.search(r"\b(Legend|Unit|Program|Gear)\b", body)
-    card_type = type_match.group(1) if type_match else ""
-    number_match = re.search(r"NUMBER:\\s*([^\\s]+)", body, re.IGNORECASE)
+    type_match = re.search(r"\b(Legend|Unit|Program|Gear)\b", body, re.IGNORECASE)
+    card_type = type_match.group(1).title() if type_match else ""
+    number_match = re.search(r"NUMBER:\s*([^\s]+)", body, re.IGNORECASE)
     if not number_match:
-        if not getattr(parse_printing, "_number_debugged", False):
-            print("DEBUG number body:", repr(body[:2500]), file=sys.stderr, flush=True)
-            parse_printing._number_debugged = True
         return None
     stable_number = number_match.group(1).strip()
     stable_id = slug + "-" + unquote(printing_id).lower()
@@ -69,14 +63,15 @@ def main():
     card_urls = set()
 
     listing_urls = {BASE + "/cards"}
-    for page in (2, 3):
-        for parameter in ("page", "p", "pageIndex"):
+    for page in (0, 1, 2, 3):
+        for parameter in ("page", "p", "pageIndex", "currentPage"):
             listing_urls.add(f"{BASE}/cards?{parameter}={page}")
 
     for url in sorted(listing_urls):
         response = session.get(url, timeout=30)
         if response.status_code != 200:
             continue
+        response.encoding = "utf-8"
         soup = BeautifulSoup(response.text, "html.parser")
         for anchor in soup.select('a[href^="/cards/"]'):
             href = anchor.get("href", "")
@@ -85,11 +80,11 @@ def main():
                 card_urls.add(urljoin(BASE, parsed.path))
 
     records = []
-    debugged_markup = False
     for card_url in sorted(card_urls):
         slug = card_url.rstrip("/").split("/")[-1]
         response = session.get(card_url, timeout=30)
         response.raise_for_status()
+        response.encoding = "utf-8"
         soup = BeautifulSoup(response.text, "html.parser")
         printing_ids = set()
         for anchor in soup.select('a[href*="printing"]'):
@@ -103,11 +98,6 @@ def main():
             r"printing\\u003[dD]([0-9a-f-]{36})",
         ):
             printing_ids.update(re.findall(pattern, response.text, re.IGNORECASE))
-
-        if not printing_ids and not debugged_markup:
-            marker = response.text.lower().find("printing")
-            print("DEBUG printing HTML:", repr(response.text[max(0, marker - 300):marker + 1500]), file=sys.stderr, flush=True)
-            debugged_markup = True
 
         for printing_id in sorted(printing_ids):
             printing_url = card_url + "?printing=" + printing_id
