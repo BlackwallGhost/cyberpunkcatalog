@@ -108,7 +108,11 @@ def main():
                         break
                 if len(script_clues) >= 40:
                     break
-            print("SCRIPT CLUES:", repr(script_clues), file=sys.stderr, flush=True)
+            urls = sorted(set(re.findall(r'https?://[^"'\\s)]+', script_response.text)))
+            routes = sorted(set(re.findall(r'["\'](/[^"\']*(?:api|cards)[^"\']*)["\']', script_response.text, re.IGNORECASE)))
+            print("SCRIPT URLS:", repr([u for u in urls if "netdeck" in u or "cyberpunk" in u]), file=sys.stderr, flush=True)
+            print("SCRIPT ROUTES:", repr(routes[:100]), file=sys.stderr, flush=True)
+            print("SCRIPT CLUES:", repr(script_clues[-10:]), file=sys.stderr, flush=True)
         soup = BeautifulSoup(response.text, "html.parser")
         for anchor in soup.select('a[href^="/cards/"]'):
             href = anchor.get("href", "")
