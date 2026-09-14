@@ -13,14 +13,14 @@ from urllib.parse import parse_qs, urljoin, urlparse, unquote
 import requests
 from bs4 import BeautifulSoup
 
-BASE = "https://netdeck.gg"
+BASE = "https://cyberpunktcg.com"
 OUTPUT = Path("app/src/main/assets/catalog.json")
 HEADERS = {"User-Agent": "CyberpunkCatalog/0.1 catalog importer"}
 
 def normalized_text(soup):
     return re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
 
-def parse_printing(session, url, slug, number):
+def parse_printing(session, url, slug, printing_id):
     response = session.get(url, timeout=30)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
@@ -41,8 +41,11 @@ def parse_printing(session, url, slug, number):
     set_name, rarity = [part.strip() for part in set_match.groups()]
     type_match = re.search(r"\b(Legend|Unit|Program|Gear)\b", body)
     card_type = type_match.group(1) if type_match else ""
-    stable_number = unquote(number)
-    stable_id = slug + "-" + stable_number.lower().replace("β", "beta").replace(" ", "-")
+    number_match = re.search(r"NUMBER:\\s*([^\\s]+)", body, re.IGNORECASE)
+    if not number_match:
+        return None
+    stable_number = number_match.group(1).strip()
+    stable_id = slug + "-" + unquote(printing_id).lower()
     return {
         "id": stable_id,
         "name": name,
@@ -59,15 +62,15 @@ def main():
     card_urls = set()
 
     for page in (1, 2, 3):
-        url = BASE + "/cards/cyberpunk" + ("" if page == 1 else "?page=" + str(page))
+        url = BASE + "/cards" + ("" if page == 1 else "?page=" + str(page))
         response = session.get(url, timeout=30)
         if response.status_code != 200:
             continue
         soup = BeautifulSoup(response.text, "html.parser")
-        for anchor in soup.select('a[href*="/cards/cyberpunk/"]'):
+        for anchor in soup.select('a[href^="/cards/"]'):
             href = anchor.get("href", "")
             parsed = urlparse(href)
-            if parsed.path.count("/") == 3:
+            if parsed.path.count("/") == 2 and parsed.path.rstrip("/") != "/cards":
                 card_urls.add(urljoin(BASE, parsed.path))
 
     records = []
@@ -83,16 +86,17 @@ def main():
                 printing_urls.add(urljoin(BASE, href))
         for printing_url in sorted(printing_urls):
             query = parse_qs(urlparse(printing_url).query)
-            numbers = query.get("printing", [])
-            if numbers:
-                record = parse_printing(session, printing_url, slug, numbers[0])
+            printing_ids = query.get("printing", [])
+            if printing_ids:
+                record = parse_printing(session, printing_url, slug, printing_ids[0])
                 if record:
                     records.append(record)
 
     unique = {record["id"]: record for record in records}
-    if not unique:
-        print("Warning: no NetDeck records parsed; retaining bundled catalog.json")
-        return
+    if len(card_urls) < 100 or len(unique) < 100:
+        raise RuntimeError(
+            f"Catalog import incomplete: found {len(card_urls)} cards and {len(unique)} printings"
+        )
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(
         json.dumps(sorted(unique.values(), key=lambda x: x["id"]), indent=2, ensure_ascii=False) + "\n",
