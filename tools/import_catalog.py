@@ -92,8 +92,7 @@ def main():
         for pattern in (
             r"printing=([0-9a-f-]{36})",
             r"printing%3D([0-9a-f-]{36})",
-            r'"printing"\\s*:\\s*"([0-9a-f-]{36})"',
-            r'"id"\\s*:\\s*"([0-9a-f-]{36})"',
+            r"printing\\u003[dD]([0-9a-f-]{36})",
         ):
             printing_ids.update(re.findall(pattern, response.text, re.IGNORECASE))
 
