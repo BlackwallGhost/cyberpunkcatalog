@@ -78,6 +78,7 @@ def main():
                 card_urls.add(urljoin(BASE, parsed.path))
 
     records = []
+    debugged_markup = False
     for card_url in sorted(card_urls):
         slug = card_url.rstrip("/").split("/")[-1]
         response = session.get(card_url, timeout=30)
@@ -96,9 +97,10 @@ def main():
         ):
             printing_ids.update(re.findall(pattern, response.text, re.IGNORECASE))
 
-        if not printing_ids and not records:
+        if not printing_ids and not debugged_markup:
             marker = response.text.lower().find("printing")
-            print("DEBUG printing HTML:", repr(response.text[max(0, marker - 300):marker + 700]))
+            print("DEBUG printing HTML:", repr(response.text[max(0, marker - 300):marker + 1500]))
+            debugged_markup = True
 
         for printing_id in sorted(printing_ids):
             printing_url = card_url + "?printing=" + printing_id
