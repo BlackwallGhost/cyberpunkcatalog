@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
@@ -25,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +38,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
+private enum class SortOption(val label: String) {
+    CARD_NUMBER_ASC("Card # ↑"),
+    CARD_NUMBER_DESC("Card # ↓"),
+    NAME_ASC("Name A–Z"),
+    NAME_DESC("Name Z–A"),
+    RARITY("Rarity")
+}
 
 data class CardPrinting(
     val id: String,
@@ -101,21 +112,43 @@ class MainActivity : ComponentActivity() {
 fun CyberpunkCatalogApp(store: CollectionStore, catalog: List<CardPrinting>) {
     var query by remember { mutableStateOf("") }
     var rarity by remember { mutableStateOf("All") }
+    var edition by remember { mutableStateOf("All") }
+    var sortOption by remember { mutableStateOf(SortOption.CARD_NUMBER_ASC) }
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     var ownedOnly by remember { mutableStateOf(false) }
     var refreshKey by remember { mutableStateOf(0) }
 
     val rarities = listOf("All", "Common", "Uncommon", "Rare", "Epic", "Secret")
-    val cards = remember(query, rarity, ownedOnly, refreshKey) {
+    val editions = listOf("All", "Retail", "Beta")
+    val rarityRank = mapOf("Common" to 0, "Uncommon" to 1, "Rare" to 2, "Epic" to 3, "Secret" to 4)
+    val cards = remember(query, rarity, edition, sortOption, ownedOnly, refreshKey) {
         catalog.filter { card ->
             val searchable = listOf(
                 card.name, card.subtitle, card.collectorNumber,
                 card.setName, card.rarity, card.type
             ).joinToString(" ").lowercase()
             val matchesQuery = query.isBlank() || searchable.contains(query.trim().lowercase())
+            val cardEdition = if (
+                card.collectorNumber.startsWith("β", ignoreCase = true) ||
+                card.id.contains("-beta-", ignoreCase = true) ||
+                card.setName.contains("Beta", ignoreCase = true)
+            ) "Beta" else "Retail"
             val matchesRarity = rarity == "All" || card.rarity == rarity
+            val matchesEdition = edition == "All" || cardEdition == edition
             val matchesOwned = !ownedOnly || store.quantity(card.id) > 0
-            matchesQuery && matchesRarity && matchesOwned
-        }
+            matchesQuery && matchesRarity && matchesEdition && matchesOwned
+        }.sortedWith(
+            when (sortOption) {
+                SortOption.CARD_NUMBER_ASC -> compareBy<CardPrinting>({ collectorNumberValue(it) }, { editionValue(it) }, { it.name.lowercase() })
+                SortOption.CARD_NUMBER_DESC -> compareByDescending<CardPrinting> { collectorNumberValue(it) }
+                    .thenBy { editionValue(it) }
+                    .thenBy { it.name.lowercase() }
+                SortOption.NAME_ASC -> compareBy<CardPrinting>({ it.name.lowercase() }, { collectorNumberValue(it) })
+                SortOption.NAME_DESC -> compareByDescending<CardPrinting> { it.name.lowercase() }
+                    .thenBy { collectorNumberValue(it) }
+                SortOption.RARITY -> compareBy<CardPrinting>({ rarityRank[it.rarity] ?: Int.MAX_VALUE }, { collectorNumberValue(it) })
+            }
+        )
     }
 
     MaterialTheme {
@@ -145,6 +178,19 @@ fun CyberpunkCatalogApp(store: CollectionStore, catalog: List<CardPrinting>) {
                     }
                 }
                 Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    editions.forEach { option ->
+                        FilterChip(
+                            selected = edition == option,
+                            onClick = { edition = option },
+                            label = { Text(option) }
+                        )
+                    }
+                }
+                Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -154,7 +200,26 @@ fun CyberpunkCatalogApp(store: CollectionStore, catalog: List<CardPrinting>) {
                         label = { Text("Owned only") }
                     )
                     Spacer(Modifier.weight(1f))
-                    Text(cards.size.toString() + " printings", style = MaterialTheme.typography.labelMedium)
+                    Column(horizontalAlignment = Alignment.End) {
+                        TextButton(onClick = { sortMenuExpanded = true }) {
+                            Text("Sort: ${sortOption.label}")
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false }
+                        ) {
+                            SortOption.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        sortOption = option
+                                        sortMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    Text(cards.size.toString() + " printings", modifier = Modifier.padding(start = 8.dp), style = MaterialTheme.typography.labelMedium)
                 }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -184,7 +249,7 @@ private fun CardRow(card: CardPrinting, store: CollectionStore, onQuantityChange
                     Text(card.subtitle, style = MaterialTheme.typography.bodyMedium)
                 }
                 Text(
-                    card.setName + " • " + card.rarity + " • " + card.type,
+                    card.setName.replace(" — ", " - ") + " | " + card.rarity + " | " + card.type,
                     style = MaterialTheme.typography.labelMedium
                 )
             }
@@ -206,3 +271,9 @@ private fun CardRow(card: CardPrinting, store: CollectionStore, onQuantityChange
         }
     }
 }
+
+private fun collectorNumberValue(card: CardPrinting): Int =
+    card.collectorNumber.filter(Char::isDigit).toIntOrNull() ?: Int.MAX_VALUE
+
+private fun editionValue(card: CardPrinting): Int =
+    if (card.collectorNumber.startsWith("β") || card.id.contains("-beta-", ignoreCase = true)) 1 else 0
