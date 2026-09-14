@@ -93,11 +93,20 @@ def main():
                 script_response = session.get(script_url, timeout=30)
                 if script_response.status_code != 200:
                     continue
-                for match in re.finditer(r"(?:offset|pageSize|/api/|netdeck)", script_response.text, re.IGNORECASE):
-                    script_clues.append(script_response.text[max(0, match.start() - 250):match.start() + 500])
-                    if len(script_clues) >= 20:
+                for pattern in (
+                    r"netdeck", r"/api/", r"cards.{0,80}(?:limit|offset)",
+                    r"limit.{0,80}offset", r"offset.{0,80}limit",
+                ):
+                    for match in re.finditer(pattern, script_response.text, re.IGNORECASE):
+                        script_clues.append(
+                            script_url + " :: " +
+                            script_response.text[max(0, match.start() - 300):match.start() + 800]
+                        )
+                        if len(script_clues) >= 40:
+                            break
+                    if len(script_clues) >= 40:
                         break
-                if len(script_clues) >= 20:
+                if len(script_clues) >= 40:
                     break
             print("SCRIPT CLUES:", repr(script_clues), file=sys.stderr, flush=True)
         soup = BeautifulSoup(response.text, "html.parser")
