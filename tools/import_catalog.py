@@ -7,6 +7,7 @@ alternate-art versions remain distinct collection entries.
 """
 import json
 import re
+import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse, unquote
 
@@ -82,6 +83,9 @@ def main():
         if response.status_code != 200:
             continue
         response.encoding = "utf-8"
+        if url == BASE + "/cards":
+            clues = sorted(set(re.findall(r'.{0,100}(?:pagination|pageSize|totalPages|api/|/api|cursor|offset).{0,180}', response.text, re.IGNORECASE)))
+            print("PAGING CLUES:", repr(clues[:30]), file=sys.stderr, flush=True)
         soup = BeautifulSoup(response.text, "html.parser")
         for anchor in soup.select('a[href^="/cards/"]'):
             href = anchor.get("href", "")
