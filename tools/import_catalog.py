@@ -61,8 +61,12 @@ def main():
     session.headers.update(HEADERS)
     card_urls = set()
 
-    for page in (1, 2, 3):
-        url = BASE + "/cards" + ("" if page == 1 else "?page=" + str(page))
+    listing_urls = {BASE + "/cards"}
+    for page in (2, 3):
+        for parameter in ("page", "p", "pageIndex"):
+            listing_urls.add(f"{BASE}/cards?{parameter}={page}")
+
+    for url in sorted(listing_urls):
         response = session.get(url, timeout=30)
         if response.status_code != 200:
             continue
@@ -79,16 +83,23 @@ def main():
         response = session.get(card_url, timeout=30)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
-        printing_urls = set()
-        for anchor in soup.select('a[href*="printing="]'):
-            href = anchor.get("href")
-            if href:
-                printing_urls.add(urljoin(BASE, href))
-        for printing_url in sorted(printing_urls):
-            query = parse_qs(urlparse(printing_url).query)
-            printing_ids = query.get("printing", [])
-            if printing_ids:
-                record = parse_printing(session, printing_url, slug, printing_ids[0])
+        printing_ids = set()
+        for anchor in soup.select('a[href*="printing"]'):
+            href = anchor.get("href", "")
+            match = re.search(r"printing(?:=|%3D)([0-9a-f-]{36})", href, re.IGNORECASE)
+            if match:
+                printing_ids.add(match.group(1))
+        for pattern in (
+            r"printing=([0-9a-f-]{36})",
+            r"printing%3D([0-9a-f-]{36})",
+            r'"printing"\\s*:\\s*"([0-9a-f-]{36})"',
+            r'"id"\\s*:\\s*"([0-9a-f-]{36})"',
+        ):
+            printing_ids.update(re.findall(pattern, response.text, re.IGNORECASE))
+
+        for printing_id in sorted(printing_ids):
+            printing_url = card_url + "?printing=" + printing_id
+            record = parse_printing(session, printing_url, slug, printing_id)
                 if record:
                     records.append(record)
 
