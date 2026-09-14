@@ -7,7 +7,6 @@ alternate-art versions remain distinct collection entries.
 """
 import json
 import re
-import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse, unquote
 
@@ -63,62 +62,19 @@ def main():
     session.headers.update(HEADERS)
     card_urls = set()
 
-    listing_urls = {BASE + "/cards"}
-    for page in (0, 1, 2, 3):
-        for parameter in ("page", "p", "pageIndex", "currentPage"):
-            listing_urls.add(f"{BASE}/cards?{parameter}={page}")
-
-    for offset in (60, 120):
-        for parameter in ("offset", "skip", "start"):
-            listing_urls.add(f"{BASE}/cards?{parameter}={offset}")
-    for page in (2, 3):
-        for parameter in ("pagination", "pageNumber"):
-            listing_urls.add(f"{BASE}/cards?{parameter}={page}")
-    for letter in "abcdefghijklmnopqrstuvwxyz":
-        for parameter in ("search", "q"):
-            listing_urls.add(f"{BASE}/cards?{parameter}={letter}")
-
-    for url in sorted(listing_urls):
-        response = session.get(url, timeout=30)
-        if response.status_code != 200:
-            continue
-        response.encoding = "utf-8"
-        if url == BASE + "/cards":
-            clues = sorted(set(re.findall(r'.{0,100}(?:pagination|pageSize|totalPages|api/|/api|cursor|offset).{0,180}', response.text, re.IGNORECASE)))
-            print("PAGING CLUES:", repr(clues[:30]), file=sys.stderr, flush=True)
-            script_clues = []
-            page_soup = BeautifulSoup(response.text, "html.parser")
-            for script in page_soup.select("script[src]"):
-                script_url = urljoin(BASE, script.get("src"))
-                script_response = session.get(script_url, timeout=30)
-                if script_response.status_code != 200:
-                    continue
-                for pattern in (
-                    r"netdeck", r"/api/", r"cards.{0,80}(?:limit|offset)",
-                    r"limit.{0,80}offset", r"offset.{0,80}limit",
-                ):
-                    for match in re.finditer(pattern, script_response.text, re.IGNORECASE):
-                        script_clues.append(
-                            script_url + " :: " +
-                            script_response.text[max(0, match.start() - 300):match.start() + 800]
-                        )
-                        if len(script_clues) >= 40:
-                            break
-                    if len(script_clues) >= 40:
-                        break
-                if len(script_clues) >= 40:
-                    break
-            urls = sorted(set(re.findall(r"https?://[^\\s)]+", script_response.text)))
-            routes = sorted(set(re.findall(r"/(?:api|cards)/[A-Za-z0-9_/?=&.%:-]+", script_response.text, re.IGNORECASE)))
-            print("SCRIPT URLS:", repr([u for u in urls if "netdeck" in u or "cyberpunk" in u]), file=sys.stderr, flush=True)
-            print("SCRIPT ROUTES:", repr(routes[:100]), file=sys.stderr, flush=True)
-            print("SCRIPT CLUES:", repr(script_clues[-10:]), file=sys.stderr, flush=True)
-        soup = BeautifulSoup(response.text, "html.parser")
-        for anchor in soup.select('a[href^="/cards/"]'):
-            href = anchor.get("href", "")
-            parsed = urlparse(href)
-            if parsed.path.count("/") == 2 and parsed.path.rstrip("/") != "/cards":
-                card_urls.add(urljoin(BASE, parsed.path))
+    api_base = "https://api.netdeck.gg/api/cards/cyberpunk"
+    for offset in (0, 60, 120):
+        response = session.get(
+            api_base,
+            params={"limit": 60, "offset": offset},
+            timeout=30,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        for card in payload.get("cards", []):
+            slug = card.get("slug")
+            if slug:
+                card_urls.add(f"{BASE}/cards/{slug}")
 
     records = []
     for card_url in sorted(card_urls):
