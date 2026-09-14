@@ -67,6 +67,16 @@ def main():
         for parameter in ("page", "p", "pageIndex", "currentPage"):
             listing_urls.add(f"{BASE}/cards?{parameter}={page}")
 
+    for offset in (60, 120):
+        for parameter in ("offset", "skip", "start"):
+            listing_urls.add(f"{BASE}/cards?{parameter}={offset}")
+    for page in (2, 3):
+        for parameter in ("pagination", "pageNumber"):
+            listing_urls.add(f"{BASE}/cards?{parameter}={page}")
+    for letter in "abcdefghijklmnopqrstuvwxyz":
+        for parameter in ("search", "q"):
+            listing_urls.add(f"{BASE}/cards?{parameter}={letter}")
+
     for url in sorted(listing_urls):
         response = session.get(url, timeout=30)
         if response.status_code != 200:
