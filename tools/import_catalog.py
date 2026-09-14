@@ -37,6 +37,9 @@ def parse_printing(session, url, slug, printing_id):
     if not set_match:
         set_match = re.search(r"Set:\s*(.*?)\s+Rarity:\s*(.*?)\s+Illustrated by:", body, re.IGNORECASE)
     if not set_match:
+        if not getattr(parse_printing, "_debugged", False):
+            print("DEBUG detail body:", repr(body[:2500]), file=sys.stderr, flush=True)
+            parse_printing._debugged = True
         return None
 
     set_name, rarity = [part.strip() for part in set_match.groups()]
